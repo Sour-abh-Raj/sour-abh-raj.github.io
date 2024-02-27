@@ -1,0 +1,33 @@
+{
+  "name": "leetcode-stats-api",
+  "version": "1.0.0",
+  "description": "An api to get user stats from leetcode",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "server": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sour-abh-Raj/Sour-abh-Raj.github.io/backend.git"
+  },
+  "keywords": [
+    "leetcode",
+    "leetcode-stats",
+    "leetcode-stats-api",
+    "leetcode-api",
+    "sourabhraj",
+    "sourabh",
+    "raj",
+    "lucifer",
+    "luciferhomepage"
+  ],
+  "author": "Sourabh Raj",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
+  }
+}
