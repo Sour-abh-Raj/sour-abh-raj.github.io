@@ -1,0 +1,97 @@
+body {
+  font-family: monospace;
+  background-color: #1d1d1d;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: #292929;
+}
+
+#age {
+  color: #ccc;
+}
+
+img {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+}
+
+main {
+  padding: 20px;
+}
+
+#about {
+  margin-bottom: 20px;
+}
+
+nav {
+  display: flex;
+  justify-content: space-around;
+}
+
+nav a {
+  color: #ccc;
+  text-decoration: none;
+  padding: 10px;
+}
+
+nav a:hover {
+  color: #fff;
+}
+
+footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #292929;
+}
+
+#footer-svg {
+  width: 50px;
+  height: 50px;
+  fill: #ccc;
+}
+
+/* LeetCode Stats section */
+#leetcode-stats {
+  border: 1px solid #292929;
+  padding: 20px;
+  border-radius: 5px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.stat-block {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.stat-label {
+  color: #ccc;
+  font-weight: bold;
+}
+
+.stat-value {
+  color: #fff;
+}
+
+#submissions-breakdown {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#submissions-breakdown li {
+  margin-bottom: 5px;
+}
