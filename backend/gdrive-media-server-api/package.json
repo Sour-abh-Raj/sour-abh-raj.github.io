@@ -1,0 +1,33 @@
+{
+  "name": "gdrive-media-server-api",
+  "version": "1.0.0",
+  "description": "An api to serve media files from gdrive on different endpoints according to the folder structure.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sour-abh-Raj/Sour-abh-Raj.github.io.git"
+  },
+  "keywords": [
+    "google",
+    "drive",
+    "google-drive",
+    "gdrive",
+    "g-drive",
+    "google",
+    "drive",
+    "api",
+    "media",
+    "api"
+  ],
+  "author": "Sourabh Raj",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.3",
+    "googleapis": "^133.0.0"
+  }
+}

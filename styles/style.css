@@ -6,10 +6,10 @@ body {
   padding: 0;
 }
 
-header {
+#main-header {
   display: flex;
-  flex-direction: column; /* Changed to column layout for smaller screens */
-  align-items: center; /* Center align */
+  flex-direction: column;
+  align-items: center;
   padding: 20px;
   background-color: #292929;
 }
@@ -22,8 +22,16 @@ img {
   margin-bottom: 10px; /* Add some space below the image */
 }
 
+#age {
+  color: #ccc;
+}
+
 main {
   padding: 20px;
+}
+
+#about {
+  margin-bottom: 20px;
 }
 
 nav {
