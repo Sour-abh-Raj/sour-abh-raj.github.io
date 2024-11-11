@@ -1,39 +1,37 @@
 const api = "https://leetcode-api-faisalshohag.vercel.app/";
 const username = "lucifer9199";
+// Optional CORS proxy to bypass CORS issues if needed
+const corsProxy = "https://cors-anywhere.herokuapp.com/";
 
-function fetchData() {
-  fetch(api + username)
-    .then((response) => response.json())
-    .then((data) => {
-      // console.log(data);
-      document.getElementById("total-solved").textContent = data.totalSolved;
-      document.getElementById("ranking").textContent = data.ranking;
-      document.getElementById("contribution-points").textContent =
-        data.contributionPoint;
-      document.getElementById("reputation").textContent = data.reputation;
-      document.getElementById("total-questions").textContent =
-        data.totalQuestions;
-      const submissionsList = document.getElementById("submissions-breakdown");
-      const difficulties = ["All", "Easy", "Medium", "Hard"];
-      for (let i = 0; i < difficulties.length; i++) {
-        const difficulty = difficulties[i];
-        const solved = data.matchedUserStats.acSubmissionNum[i].count;
-        const listItem = document.createElement("li");
-        listItem.innerHTML = `${difficulty}: ${solved}`;
-        submissionsList.appendChild(listItem);
-      }
-    })
-    .catch((error) => {
-      console.error("Error fetching data:", error);
-      document.getElementById("data-container").innerHTML =
-        "<p>Error fetching data. Please try again later.</p>";
+// Fetch data from the API
+async function fetchData() {
+  try {
+    const response = await fetch(`${corsProxy}${api}${username}`);
+    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const data = await response.json();
+
+    // Populate the stats in the HTML
+    document.getElementById("total-solved").textContent = data.totalSolved || "-";
+    document.getElementById("ranking").textContent = data.ranking || "-";
+    document.getElementById("contribution-points").textContent = data.contributionPoint || "-";
+    document.getElementById("reputation").textContent = data.reputation || "-";
+    document.getElementById("total-questions").textContent = data.totalQuestions || "-";
+
+    // Populate submissions breakdown
+    const submissionsList = document.getElementById("submissions-breakdown");
+    submissionsList.innerHTML = ""; // Clear existing entries
+    const difficulties = ["All", "Easy", "Medium", "Hard"];
+    data.matchedUserStats.acSubmissionNum.forEach((item, index) => {
+      const listItem = document.createElement("li");
+      listItem.textContent = `${difficulties[index]}: ${item.count}`;
+      submissionsList.appendChild(listItem);
     });
+
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    document.getElementById("data-container").innerHTML = "<p>Error fetching data. Please try again later.</p>";
+  }
 }
 
-fetch(api)
-  .then(() => {
-    fetchData();
-  })
-  .catch((error) => {
-    console.error("Error fetching data:", error);
-  });
+// Load data on page load
+document.addEventListener("DOMContentLoaded", fetchData);
