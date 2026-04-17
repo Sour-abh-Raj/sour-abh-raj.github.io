@@ -209,6 +209,7 @@
     <div class="input-bar">
       <textarea class="input" id="msg-input" placeholder="Talk to your digital twin… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
       <div class="input-actions">
+        <button class="btn btn-ghost btn-sm" onclick="clearHistory()" title="Clear history" style="height:44px;padding:0 10px;font-size:16px">&#128465;</button>
         <button class="send-btn" id="send-btn" onclick="sendMsg()" title="Send (Enter)">&#10148;</button>
       </div>
     </div>
@@ -264,10 +265,41 @@
 <script>
 const backend = () => getBackend();
 let ws = null;
-let sessionId = 'ses_' + Math.random().toString(36).slice(2,10);
+let sessionId = localStorage.getItem('twin_session_id') || ('ses_' + Math.random().toString(36).slice(2,10));
+localStorage.setItem('twin_session_id', sessionId);
 let currentTwinBubble = null;
 let currentTwinText = '';
 let isStreaming = false;
+
+const MSG_KEY = 'twin_chat_history';
+const MAX_STORED = 60;
+
+function saveMsgToStorage(role, text) {
+  const history = JSON.parse(localStorage.getItem(MSG_KEY) || '[]');
+  history.push({ role, text, ts: Date.now() });
+  if (history.length > MAX_STORED) history.splice(0, history.length - MAX_STORED);
+  localStorage.setItem(MSG_KEY, JSON.stringify(history));
+}
+
+function restoreHistory() {
+  const history = JSON.parse(localStorage.getItem(MSG_KEY) || '[]');
+  if (!history.length) return;
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  history.forEach(({ role, text, ts }) => {
+    addBubble(role, text, new Date(ts));
+  });
+}
+
+function clearHistory() {
+  localStorage.removeItem(MSG_KEY);
+  localStorage.removeItem('twin_session_id');
+  sessionId = 'ses_' + Math.random().toString(36).slice(2,10);
+  localStorage.setItem('twin_session_id', sessionId);
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  addBubble('twin', 'History cleared. Fresh session started.');
+}
 
 // ── WebSocket ───────────────────────────────────────────────────────────────
 function connectWS() {
@@ -290,6 +322,7 @@ function connectWS() {
       isStreaming = false;
       if (currentTwinBubble) {
         currentTwinBubble.textContent = currentTwinText;
+        saveMsgToStorage('twin', currentTwinText);
       }
       setInputEnabled(true);
     } else if (msg.type === 'error') {
@@ -301,7 +334,7 @@ function connectWS() {
 }
 
 // ── Chat ────────────────────────────────────────────────────────────────────
-function addBubble(role, text) {
+function addBubble(role, text, dateObj, skipSave) {
   const msgs = document.getElementById('messages');
   const wrap = document.createElement('div');
   wrap.className = `msg ${role}`;
@@ -314,14 +347,15 @@ function addBubble(role, text) {
   bubble.textContent = text;
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
-  const now = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  meta.textContent = (role === 'twin' ? 'LUCIFER' : 'You') + ' · ' + now;
+  const d = dateObj || new Date();
+  meta.textContent = (role === 'twin' ? 'LUCIFER' : 'You') + ' · ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   inner.appendChild(bubble);
   inner.appendChild(meta);
   wrap.appendChild(av);
   wrap.appendChild(inner);
   msgs.appendChild(wrap);
   scrollBottom();
+  if (!skipSave && text) saveMsgToStorage(role, text);
   return bubble;
 }
 
@@ -339,6 +373,38 @@ async function sendMsg() {
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text || isStreaming) return;
+
+  // /hermes <task> — run task in WSL Hermes directly from chat
+  if (text.startsWith('/hermes ')) {
+    const taskText = text.slice(8).trim();
+    addBubble('user', text);
+    input.value = ''; input.style.height = '44px';
+    const bubble = addBubble('twin', '⚡ Sending to Hermes…', null, true);
+    try {
+      const cr = await fetch(backend() + '/api/tasks', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ title: taskText.slice(0,80), desc: taskText, status:'backlog' })
+      });
+      const { id: tid } = await cr.json();
+      await fetch(backend() + '/api/hermes', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ task_id: tid, task: taskText })
+      });
+      const es = new EventSource(backend() + '/api/hermes/' + tid);
+      let out = '';
+      es.onmessage = (e) => {
+        const d = JSON.parse(e.data);
+        if (d.type === 'line') { out += d.content + '\n'; bubble.textContent = '⚡ ' + out.slice(-800); scrollBottom(); }
+        if (d.type === 'done' || d.type === 'error') { es.close(); saveMsgToStorage('twin', bubble.textContent); }
+      };
+    } catch (err) {
+      bubble.textContent = '[Hermes error: ' + err + ']';
+    }
+    return;
+  }
+
+  // /clear — wipe history
+  if (text === '/clear') { input.value = ''; clearHistory(); return; }
 
   addBubble('user', text);
   input.value = '';
@@ -428,6 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
   });
 
+  restoreHistory();
   updateStatusBanner().then(ok => {
     if (ok) {
       loadPersona();
