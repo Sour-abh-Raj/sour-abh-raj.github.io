@@ -101,6 +101,22 @@
 .msg.twin .msg-meta { text-align: left; }
 .cursor { display: inline-block; width: 8px; height: 14px; background: var(--accent); vertical-align: middle; animation: blink 0.7s infinite; }
 @keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+.think-block {
+  margin-bottom: 8px; border: 1px solid rgba(123,47,255,0.3);
+  border-radius: 8px; overflow: hidden; font-size: 11px;
+}
+.think-toggle {
+  display: flex; align-items: center; gap: 6px; padding: 6px 10px;
+  background: rgba(123,47,255,0.08); cursor: pointer; color: var(--purple);
+  font-family: var(--font-mono); user-select: none;
+}
+.think-toggle:hover { background: rgba(123,47,255,0.14); }
+.think-body {
+  padding: 8px 12px; color: var(--muted); font-family: var(--font-mono);
+  white-space: pre-wrap; line-height: 1.5; max-height: 200px; overflow-y: auto;
+  display: none;
+}
+.think-body.open { display: block; }
 
 /* Input bar */
 .input-bar {
@@ -225,6 +241,9 @@
     <div id="ctx-results" style="margin-bottom:20px"></div>
 
     <div class="card-title" style="margin-bottom:10px">Quick Actions</div>
+    <div class="quick-action" onclick="insertPrompt('/think What are the best architectural improvements I can make to my NSE trading system right now?')">
+      <span class="quick-icon">&#129504;</span> Deep think (nemotron)
+    </div>
     <div class="quick-action" onclick="insertPrompt('What are my active projects and their current status?')">
       <span class="quick-icon">&#128193;</span> Active projects
     </div>
@@ -269,6 +288,8 @@ let sessionId = localStorage.getItem('twin_session_id') || ('ses_' + Math.random
 localStorage.setItem('twin_session_id', sessionId);
 let currentTwinBubble = null;
 let currentTwinText = '';
+let currentThinkBody = null;
+let currentThinkText = '';
 let isStreaming = false;
 
 const MSG_KEY = 'twin_chat_history';
@@ -313,7 +334,22 @@ function connectWS() {
     if (msg.type === 'start') {
       isStreaming = true;
       currentTwinText = '';
+      currentThinkText = '';
+      currentThinkBody = null;
       currentTwinBubble = addBubble('twin', '');
+    } else if (msg.type === 'think') {
+      // Create thinking block on first reasoning chunk
+      if (!currentThinkBody && currentTwinBubble) {
+        const wrap = currentTwinBubble.parentElement.parentElement;
+        const tb = document.createElement('div');
+        tb.className = 'think-block';
+        tb.innerHTML = '<div class="think-toggle" onclick="this.nextSibling.classList.toggle(\'open\')">&#129504; Reasoning <span style="margin-left:auto;font-size:10px">▼</span></div><div class="think-body open"></div>';
+        wrap.insertBefore(tb, wrap.querySelector('.msg-bubble').parentElement);
+        currentThinkBody = tb.querySelector('.think-body');
+      }
+      currentThinkText += msg.content;
+      if (currentThinkBody) currentThinkBody.textContent = currentThinkText;
+      scrollBottom();
     } else if (msg.type === 'chunk') {
       currentTwinText += msg.content;
       if (currentTwinBubble) currentTwinBubble.textContent = currentTwinText;
