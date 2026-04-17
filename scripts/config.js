@@ -1,10 +1,14 @@
 /* config.js — Backend URL management for Digital Twin pages */
 
-const DEFAULT_BACKEND = 'http://localhost:8080';
-const STORAGE_KEY     = 'twin_backend_url';
+const STORAGE_KEY = 'twin_backend_url';
 
 function getBackend() {
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_BACKEND;
+  // When served directly from twin_service.py (localhost:8080/pages/...)
+  // use the same origin — no mixed-content issue.
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    return location.protocol + '//' + location.host.replace(/\/.*/, '').split('/')[0];
+  }
+  return localStorage.getItem(STORAGE_KEY) || 'http://localhost:8080';
 }
 function setBackend(url) {
   localStorage.setItem(STORAGE_KEY, url.replace(/\/$/, ''));
