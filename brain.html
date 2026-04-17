@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Second Brain — Sourabh Raj</title>
+<link rel="stylesheet" href="./styles/style.css"/>
+<link rel="stylesheet" href="./styles/twin.css"/>
+<style>
+.brain-layout { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:24px; max-width:1100px; margin:0 auto; width:100%; }
+.mem-item {
+  border:1px solid var(--border); border-radius:8px; padding:12px 14px;
+  margin-bottom:8px; background:var(--panel); font-size:13px; line-height:1.5;
+  transition:border-color 0.15s;
+}
+.mem-item:hover { border-color:var(--accent); }
+.mem-cat {
+  font-size:10px; font-family:var(--font-mono); color:var(--accent);
+  background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2);
+  padding:1px 6px; border-radius:3px; margin-bottom:6px; display:inline-block;
+}
+.graph-mini { width:100%; height:340px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; position:relative; overflow:hidden; }
+#graph-mini-container { width:100%; height:100%; }
+.stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.stat-box {
+  background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  padding:14px; text-align:center;
+}
+.stat-box .val { font-size:26px; font-weight:800; font-family:var(--font-mono); }
+.stat-box .lbl { font-size:11px; color:var(--muted); margin-top:4px; }
+@media(max-width:700px) { .brain-layout{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="page">
+<nav class="top-nav">
+  <span class="nav-logo">&#9670; LUCIFER</span>
+  <a href="index.html" class="nav-link">Home</a>
+  <a href="twin.html" class="nav-link">Twin</a>
+  <a href="kanban.html" class="nav-link">Kanban</a>
+  <a href="brain.html" class="nav-link active">Brain</a>
+  <div class="nav-spacer"></div>
+  <span id="backend-pill" class="status-pill offline" onclick="openConfigModal()" style="cursor:pointer">
+    <div class="status-dot"></div> Connecting...
+  </span>
+</nav>
+<div id="offline-banner">Twin service offline. <a href="#" onclick="openConfigModal()" style="color:inherit">Configure backend URL</a></div>
+
+<div class="brain-layout">
+  <!-- Left col -->
+  <div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="val glow-text" id="s-mem">—</div><div class="lbl">Memories</div></div>
+      <div class="stat-box"><div class="val" style="color:var(--purple)" id="s-ent">—</div><div class="lbl">KG Entities</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Search Memory</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="input" id="q" placeholder="Search second brain…" onkeydown="if(event.key==='Enter')search()"/>
+        <button class="btn btn-primary btn-sm" onclick="search()">Search</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadAll()">All</button>
+      </div>
+      <div id="results"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- Right col -->
+  <div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Knowledge Graph
+        <span style="font-size:10px;color:var(--muted);float:right" id="graph-info"></span>
+      </div>
+      <div class="graph-mini"><div id="graph-mini-container"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Click nodes to explore · Powered by Graphiti + Neo4j</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Config modal -->
+<div id="config-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 class="glow-text">Backend Configuration</h3>
+    <label>Twin Service URL</label>
+    <input class="input" id="backend-url-input" placeholder="http://localhost:8080"/>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeConfigModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="./scripts/config.js"></script>
+<script>
+async function loadStats() {
+  try {
+    const r = await fetch(getBackend() + '/api/status');
+    const d = await r.json();
+    document.getElementById('s-mem').textContent = d.memories ?? '?';
+    document.getElementById('s-ent').textContent = d.entities ?? '?';
+  } catch {}
+}
+
+async function loadAll() {
+  const el = document.getElementById('results');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch(getBackend() + '/api/brain');
+    const d = await r.json();
+    render(el, d.memories || []);
+  } catch { el.innerHTML = '<div style="color:var(--red);font-size:12px">Offline</div>'; }
+}
+
+async function search() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) { loadAll(); return; }
+  const el = document.getElementById('results');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch(getBackend() + '/api/brain?q=' + encodeURIComponent(q));
+    const d = await r.json();
+    render(el, d.memories || [], true);
+  } catch { el.innerHTML = '<div style="color:var(--red);font-size:12px">Offline</div>'; }
+}
+
+function render(el, mems, isSearch) {
+  if (!mems.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px">Nothing found.</div>'; return; }
+  el.innerHTML = mems.map(m => {
+    const cat = (m.match(/^\[(.+?)\]/) || [,''])[1];
+    const text = cat ? m.replace(/^\[.+?\]\s*/, '') : m;
+    return `<div class="mem-item">${cat ? `<div class="mem-cat">${cat}</div>` : ''}<div>${text}</div></div>`;
+  }).join('');
+}
+
+// Mini knowledge graph using vis.js
+async function loadGraph() {
+  try {
+    const r = await fetch(getBackend() + '/api/graph');  // proxy from twin_service or direct twin.py port
+    const d = await r.json();
+    if (!d.nodes || !d.nodes.length) return;
+    document.getElementById('graph-info').textContent = `${d.nodes.length} nodes · ${d.edges.length} edges`;
+
+    if (!window.vis) {
+      await loadVis();
+    }
+    const C = { person:'#f85149', project:'#3fb950', tech:'#bc8cff', ep:'#d29922', def:'#58a6ff' };
+    function nc(n) {
+      const name = (n.label||'').toLowerCase();
+      if (['soura','sourabh'].some(p=>name.includes(p))) return C.person;
+      if (['nse','mkt','ai-res','dexter','ai-mem'].some(p=>name.includes(p))) return C.project;
+      if (['python','docker','neo4j','qdrant','fastapi','claude','openrouter','mem0','graphiti'].some(p=>name.includes(p))) return C.tech;
+      if ((n.neo4j_label||'').toLowerCase()==='episodic') return C.ep;
+      return C.def;
+    }
+    const nodes = new vis.DataSet(d.nodes.map(n=>({
+      id:n.id, label:n.label, title:n.summary||n.label,
+      color:{background:nc(n),border:'#0d1117'},
+      font:{color:'#e6edf3',size:11}, shape:'dot', size:14, borderWidth:1,
+    })));
+    const edges = new vis.DataSet(d.edges.map((e,i)=>({
+      id:i, from:e.from, to:e.to,
+      color:{color:'#30363d',opacity:0.7},
+      arrows:{to:{enabled:true,scaleFactor:0.5}},
+      width:1,
+    })));
+    new vis.Network(
+      document.getElementById('graph-mini-container'),
+      {nodes,edges},
+      { physics:{forceAtlas2Based:{gravitationalConstant:-40,springLength:80},solver:'forceAtlas2Based',stabilization:{iterations:100}},
+        interaction:{hover:true,zoomView:true}, layout:{randomSeed:42} }
+    );
+  } catch {}
+}
+
+function loadVis() {
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://unpkg.com/vis-network/standalone/umd/vis-network.min.js';
+    s.onload=res; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateStatusBanner().then(ok => {
+    if (ok) { loadStats(); loadAll(); loadGraph(); }
+  });
+});
+</script>
+</body>
+</html>

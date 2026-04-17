@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LUCIFER — Digital Twin</title>
+<link rel="stylesheet" href="./styles/style.css"/>
+<link rel="stylesheet" href="./styles/twin.css"/>
+<style>
+/* ── Twin-specific layout ──────────────────────────────────────────────────── */
+.twin-layout {
+  flex: 1; display: grid;
+  grid-template-columns: 280px 1fr 260px;
+  gap: 0; height: calc(100vh - 55px); overflow: hidden;
+}
+/* Left — persona panel */
+.persona-panel {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; padding: 20px 16px;
+}
+.avatar-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 0 16px;
+}
+.avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg,#1a2a4a,#2a1a5a);
+  border: 2px solid var(--accent); box-shadow: var(--glow);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; font-weight: 800; color: var(--accent);
+  animation: halo 3s ease-in-out infinite;
+}
+@keyframes halo {
+  0%,100%{ box-shadow: 0 0 15px rgba(0,212,255,0.3); }
+  50%    { box-shadow: 0 0 35px rgba(123,47,255,0.5); }
+}
+.twin-name { font-size: 17px; font-weight: 700; margin-top: 12px; }
+.twin-handle { font-size: 11px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+.skill-chip {
+  display: inline-block; padding: 3px 9px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; margin: 2px;
+  background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2);
+  color: var(--accent);
+}
+.brain-stat {
+  display: flex; justify-content: space-between;
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12px;
+}
+.brain-stat:last-child { border-bottom: none; }
+.brain-stat-val { font-family: var(--font-mono); color: var(--accent); font-weight: 700; }
+.ctx-item {
+  font-size: 11px; color: var(--muted); padding: 5px 8px;
+  border-left: 2px solid var(--border); margin-bottom: 4px;
+  line-height: 1.4;
+}
+/* Center — chat */
+.chat-panel { display: flex; flex-direction: column; }
+.messages {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.msg { display: flex; gap: 10px; max-width: 85%; animation: fadeUp 0.25s ease; }
+.msg.user { align-self: flex-end; flex-direction: row-reverse; }
+.msg.twin { align-self: flex-start; }
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+.msg-bubble {
+  padding: 12px 16px; border-radius: 12px; font-size: 13.5px;
+  line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  max-width: 600px;
+}
+.msg.user .msg-bubble {
+  background: rgba(0,212,255,0.12);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-bottom-right-radius: 3px;
+}
+.msg.twin .msg-bubble {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+  font-family: var(--font-mono); font-size: 13px;
+}
+.msg-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; flex-shrink: 0; margin-top: 2px;
+}
+.msg.twin .msg-avatar {
+  background: linear-gradient(135deg,#1a2a4a,#2a1a5a);
+  border: 1px solid var(--accent); color: var(--accent);
+}
+.msg.user .msg-avatar {
+  background: rgba(123,47,255,0.2); border: 1px solid var(--purple);
+  color: var(--purple);
+}
+.msg-meta { font-size: 10px; color: var(--muted); margin-top: 4px; text-align: right; }
+.msg.twin .msg-meta { text-align: left; }
+.cursor { display: inline-block; width: 8px; height: 14px; background: var(--accent); vertical-align: middle; animation: blink 0.7s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:0} }
+
+/* Input bar */
+.input-bar {
+  border-top: 1px solid var(--border); padding: 16px 20px;
+  display: flex; gap: 10px; align-items: flex-end;
+  background: rgba(8,12,20,0.6); backdrop-filter: blur(8px);
+}
+#msg-input {
+  flex: 1; resize: none; height: 44px; max-height: 120px;
+  overflow-y: auto; line-height: 1.5; padding: 11px 14px;
+  font-family: inherit;
+}
+.input-actions { display: flex; gap: 8px; }
+.send-btn {
+  height: 44px; width: 44px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  border: none; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; box-shadow: var(--glow);
+}
+.send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+/* Right — context */
+.context-panel {
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 16px;
+  overflow-y: auto;
+}
+.ctx-search { display: flex; gap: 6px; margin-bottom: 14px; }
+.ctx-search .input { font-size: 12px; padding: 7px 10px; }
+.quick-action {
+  display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+  border-radius: 8px; cursor: pointer; font-size: 12px;
+  border: 1px solid var(--border); margin-bottom: 6px;
+  transition: all 0.15s; color: var(--muted);
+}
+.quick-action:hover { border-color: var(--accent); color: var(--text); background: rgba(0,212,255,0.05); }
+.quick-icon { font-size: 14px; }
+
+/* Responsive */
+@media(max-width:900px) {
+  .twin-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  .persona-panel, .context-panel { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+<!-- Nav -->
+<nav class="top-nav">
+  <span class="nav-logo">&#9670; LUCIFER</span>
+  <a href="index.html" class="nav-link">Home</a>
+  <a href="twin.html" class="nav-link active">Twin</a>
+  <a href="kanban.html" class="nav-link">Kanban</a>
+  <a href="brain.html" class="nav-link">Brain</a>
+  <div class="nav-spacer"></div>
+  <span id="backend-pill" class="status-pill offline" onclick="openConfigModal()" style="cursor:pointer">
+    <div class="status-dot"></div> Connecting...
+  </span>
+</nav>
+
+<div id="offline-banner">Twin service offline. <a href="#" onclick="openConfigModal()" style="color:inherit">Configure backend URL</a></div>
+
+<!-- Main layout -->
+<div class="twin-layout">
+
+  <!-- LEFT — Persona -->
+  <aside class="persona-panel">
+    <div class="avatar-wrap">
+      <div class="avatar" id="avatar">L</div>
+      <div class="twin-name glow-text" id="twin-name">LUCIFER</div>
+      <div class="twin-handle" id="twin-handle">@soura.digital-twin</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">Expertise</div>
+      <div id="skills-wrap"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">Brain Stats</div>
+      <div class="brain-stat"><span>Memories</span><span class="brain-stat-val" id="stat-mem">—</span></div>
+      <div class="brain-stat"><span>Entities</span><span class="brain-stat-val" id="stat-ent">—</span></div>
+      <div class="brain-stat"><span>Model</span><span class="brain-stat-val" id="stat-model" style="font-size:10px">—</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Active Projects</div>
+      <div id="projects-wrap"></div>
+    </div>
+  </aside>
+
+  <!-- CENTER — Chat -->
+  <main class="chat-panel">
+    <div class="messages" id="messages">
+      <div class="msg twin">
+        <div class="msg-avatar">L</div>
+        <div>
+          <div class="msg-bubble">Hey — I'm LUCIFER, Soura's digital twin. I have access to his second brain: memories, projects, skills, and decisions. Ask me anything about his work, or give me a task to execute.</div>
+          <div class="msg-meta">LUCIFER · just now</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-bar">
+      <textarea class="input" id="msg-input" placeholder="Talk to your digital twin… (Enter to send, Shift+Enter for newline)" rows="1"></textarea>
+      <div class="input-actions">
+        <button class="send-btn" id="send-btn" onclick="sendMsg()" title="Send (Enter)">&#10148;</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT — Context -->
+  <aside class="context-panel">
+    <div class="card-title">Brain Search</div>
+    <div class="ctx-search">
+      <input class="input" id="ctx-q" placeholder="Search memory…" onkeydown="if(event.key==='Enter')searchCtx()"/>
+      <button class="btn btn-ghost btn-sm" onclick="searchCtx()">Go</button>
+    </div>
+    <div id="ctx-results" style="margin-bottom:20px"></div>
+
+    <div class="card-title" style="margin-bottom:10px">Quick Actions</div>
+    <div class="quick-action" onclick="insertPrompt('What are my active projects and their current status?')">
+      <span class="quick-icon">&#128193;</span> Active projects
+    </div>
+    <div class="quick-action" onclick="insertPrompt('What do I prefer for Python packaging and dependency management?')">
+      <span class="quick-icon">&#128013;</span> Dev preferences
+    </div>
+    <div class="quick-action" onclick="insertPrompt('Summarise what you know about my NSE trading systems.')">
+      <span class="quick-icon">&#128200;</span> Trading systems
+    </div>
+    <div class="quick-action" onclick="insertPrompt('What architectural decisions have I made recently?')">
+      <span class="quick-icon">&#9881;</span> Architecture decisions
+    </div>
+    <div class="quick-action" onclick="window.location.href='kanban.html'">
+      <span class="quick-icon">&#9998;</span> Open Kanban board
+    </div>
+  </aside>
+</div>
+</div>
+
+<!-- Config modal -->
+<div id="config-modal" class="modal-overlay">
+  <div class="modal">
+    <h3 class="glow-text">Backend Configuration</h3>
+    <label>Twin Service URL</label>
+    <input class="input" id="backend-url-input" placeholder="http://localhost:8080"/>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:16px">
+      Run <code style="color:var(--accent)">python twin_service.py</code> in <code>ai-memory-tools/</code>.
+      For remote access use ngrok: <code style="color:var(--accent)">ngrok http 8080</code>
+    </p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeConfigModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="./scripts/config.js"></script>
+<script>
+const backend = () => getBackend();
+let ws = null;
+let sessionId = 'ses_' + Math.random().toString(36).slice(2,10);
+let currentTwinBubble = null;
+let currentTwinText = '';
+let isStreaming = false;
+
+// ── WebSocket ───────────────────────────────────────────────────────────────
+function connectWS() {
+  const wsUrl = backend().replace('http', 'ws') + '/ws/twin';
+  ws = new WebSocket(wsUrl);
+  ws.onopen  = () => console.log('WS connected');
+  ws.onclose = () => { ws = null; setTimeout(connectWS, 3000); };
+  ws.onerror = () => ws && ws.close();
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'start') {
+      isStreaming = true;
+      currentTwinText = '';
+      currentTwinBubble = addBubble('twin', '');
+    } else if (msg.type === 'chunk') {
+      currentTwinText += msg.content;
+      if (currentTwinBubble) currentTwinBubble.textContent = currentTwinText;
+      scrollBottom();
+    } else if (msg.type === 'done') {
+      isStreaming = false;
+      if (currentTwinBubble) {
+        currentTwinBubble.textContent = currentTwinText;
+      }
+      setInputEnabled(true);
+    } else if (msg.type === 'error') {
+      isStreaming = false;
+      addBubble('twin', '[Error: ' + msg.content + ']');
+      setInputEnabled(true);
+    }
+  };
+}
+
+// ── Chat ────────────────────────────────────────────────────────────────────
+function addBubble(role, text) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+  const av = document.createElement('div');
+  av.className = 'msg-avatar';
+  av.textContent = role === 'twin' ? 'L' : 'S';
+  const inner = document.createElement('div');
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text;
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  const now = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  meta.textContent = (role === 'twin' ? 'LUCIFER' : 'You') + ' · ' + now;
+  inner.appendChild(bubble);
+  inner.appendChild(meta);
+  wrap.appendChild(av);
+  wrap.appendChild(inner);
+  msgs.appendChild(wrap);
+  scrollBottom();
+  return bubble;
+}
+
+function scrollBottom() {
+  const m = document.getElementById('messages');
+  m.scrollTop = m.scrollHeight;
+}
+
+function setInputEnabled(on) {
+  document.getElementById('msg-input').disabled = !on;
+  document.getElementById('send-btn').disabled = !on;
+}
+
+async function sendMsg() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || isStreaming) return;
+
+  addBubble('user', text);
+  input.value = '';
+  input.style.height = '44px';
+  setInputEnabled(false);
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'chat', message: text, session_id: sessionId }));
+  } else {
+    // HTTP fallback
+    try {
+      isStreaming = true;
+      currentTwinText = '';
+      currentTwinBubble = addBubble('twin', '');
+      const res = await fetch(backend() + '/ws/twin', { method: 'POST' });
+      // Try non-streaming
+      const data = await res.json();
+      currentTwinBubble.textContent = data.content || '[No response]';
+    } catch {
+      currentTwinBubble && (currentTwinBubble.textContent = 'Backend offline. Start twin_service.py and refresh.');
+    }
+    isStreaming = false;
+    setInputEnabled(true);
+  }
+}
+
+function insertPrompt(text) {
+  const inp = document.getElementById('msg-input');
+  inp.value = text;
+  inp.focus();
+}
+
+// ── Brain search ────────────────────────────────────────────────────────────
+async function searchCtx() {
+  const q = document.getElementById('ctx-q').value.trim();
+  if (!q) return;
+  const el = document.getElementById('ctx-results');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const res = await fetch(backend() + '/api/brain?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    const mems = data.memories || [];
+    el.innerHTML = mems.length
+      ? mems.map(m => `<div class="ctx-item">${m}</div>`).join('')
+      : '<div style="color:var(--muted);font-size:11px">Nothing found.</div>';
+  } catch {
+    el.innerHTML = '<div style="color:var(--red);font-size:11px">Offline</div>';
+  }
+}
+
+// ── Load persona ─────────────────────────────────────────────────────────────
+async function loadPersona() {
+  try {
+    const res = await fetch(backend() + '/api/persona');
+    const p = await res.json();
+    const exp = p.expertise || {};
+    const skills = [...(exp.strong||[]), ...(exp.growing||[])].slice(0,8);
+    document.getElementById('skills-wrap').innerHTML =
+      skills.map(s=>`<span class="skill-chip">${s}</span>`).join('');
+    const projs = (p.projects?.active || []).slice(0,4);
+    document.getElementById('projects-wrap').innerHTML =
+      projs.map(pr=>`<div class="ctx-item">${pr}</div>`).join('');
+    const n = p.name || 'Soura';
+    document.getElementById('twin-name').textContent = n.toUpperCase() + " · LUCIFER";
+    document.getElementById('avatar').textContent = n[0];
+  } catch {}
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch(backend() + '/api/status');
+    const s = await res.json();
+    document.getElementById('stat-mem').textContent  = s.memories ?? '?';
+    document.getElementById('stat-ent').textContent  = s.entities ?? '?';
+    document.getElementById('stat-model').textContent = (s.model||'?').split('/').pop();
+  } catch {}
+}
+
+// ── Auto-resize textarea ────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('msg-input');
+  inp.addEventListener('input', () => {
+    inp.style.height = '44px';
+    inp.style.height = Math.min(inp.scrollHeight, 120) + 'px';
+  });
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+
+  updateStatusBanner().then(ok => {
+    if (ok) {
+      loadPersona();
+      loadStats();
+      connectWS();
+    }
+  });
+  // Recheck every 30s
+  setInterval(() => updateStatusBanner().then(ok => { if (ok && !ws) connectWS(); }), 30000);
+});
+</script>
+</body>
+</html>
